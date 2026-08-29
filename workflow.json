@@ -1,0 +1,454 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -304
+      ],
+      "id": "bf6ce9cd-eb8c-4e67-8dea-eac7024e240f",
+      "name": "WhatsApp Trigger",
+      "webhookId": "f6a2606e-97b6-4617-8136-9a477100850e",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "1Opyey59mkNvbiXu",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages[0].text.body }} ",
+        "options": {
+          "systemMessage": "FIRST MESSAGE:\nOnly send the welcome menu if this is the very first message in the conversation.\nIf the user has already said hi before, do NOT send the menu again. Continue the conversation instead.\n\nYou are a food ordering assistant for NiR Restaurant on WhatsApp.\n\nTOOLS YOU HAVE:\n- check_stock : reads the stock sheet. Columns are Product, Quantity, Status\n- find_order : reads the Orders sheet to find an existing order\n- save_order : saves a new order to the Orders sheet\n\nOrders sheet columns: Customer Name, Phone, Item, Quantity, Description, Status\n\nIMPORTANT:\nAlways read the conversation history first. Never ask again for something the user already told you.\n\nFIRST MESSAGE (hi, hello, hey):\nWelcome to MDA Restaurant\nHow can I help you today?\n- Place an order\n- FAQ / Information\n- Check order or stock\n\nPLACING AN ORDER:\nAsk one thing at a time in this order: name, food item, quantity.\nThen use check_stock for that item.\n\nIf Status is Available and Quantity is enough:\nReply: Your order for *item* (x quantity) is confirmed\nThen use save_order with:\nCustomer Name = the name they gave\nPhone = their WhatsApp number\nItem = the food item\nQuantity = the number they asked for\nDescription = Order accepted (item available)\nStatus = Confirmed\n\nIf the item is out of stock or quantity is not enough:\nReply: Sorry, *item* is out of stock\nThen use check_stock again and list the items that are Available.\nDo not save rejected orders.\n\nMENU:\nVeg Thali, Chicken Thali, Mutton Thali, Fish Curry Meal, Egg Curry Meal, Extra Rice\n\nFAQ ANSWERS:\nDelivery time: 30 to 45 minutes\nPayment: Cash on delivery only\nOpening hours: 10 AM to 11 PM every day\nDelivery charge: 60 taka\nContact: +8801580598212\nIf someone asks something not listed here, tell them to call the restaurant.\n\nCHECK ORDER OR STOCK:\nFor an order, use find_order and reply with the status.\nFor stock, use check_stock and reply with the quantity available.\n\nCANCEL ORDER:\nSay you cannot cancel directly.\nAsk them to call the owner at +8801580598212\n\nHOW TO WRITE:\nKeep replies short like a normal WhatsApp chat.\nNo long paragraphs.\nUse *stars* only to highlight a word.\nBe friendly and polite."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -224,
+        -96
+      ],
+      "id": "599faf33-cfce-4dfc-9892-0471ac22bd4f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "={{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        -304
+      ],
+      "id": "7bf5d264-56b2-464d-9d3f-977df8573375",
+      "name": "Send message1",
+      "webhookId": "7f2d6527-7e0d-4f35-8846-529c1d2f6557",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "ystDEaRS1xteDZyP",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -256,
+        160
+      ],
+      "id": "92aa473f-d1a1-4958-b61a-0f44f189cd1b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5c76c0fd-3683-4ca9-8f5d-ddbe880995b3",
+              "leftValue": "={{ $json.messages[0].type }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -496,
+        -64
+      ],
+      "id": "6284ee9e-4f88-4a19-bfab-3deff28bb9f0",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Check current stock quantity of a product. Input the product name to see how many units are available.",
+        "documentId": {
+          "__rl": true,
+          "value": "1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY",
+          "mode": "list",
+          "cachedResultName": "Food Delivery System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 224745555,
+          "mode": "list",
+          "cachedResultName": "check_stock",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit#gid=224745555"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        -128,
+        144
+      ],
+      "id": "0e5561be-da95-4769-bb26-62ae02df0b80",
+      "name": "check_stock",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RvU4eCFVTcqC6acw",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Look up an existing order by customer phone number",
+        "documentId": {
+          "__rl": true,
+          "value": "1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY",
+          "mode": "list",
+          "cachedResultName": "Food Delivery System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 676783310,
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit#gid=676783310"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        16,
+        144
+      ],
+      "id": "340ab653-8801-4e8d-85c2-743b4723c9e7",
+      "name": "find_order",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RvU4eCFVTcqC6acw",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Save a new order. Requires customer name, phone number, item and quantity",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY",
+          "mode": "list",
+          "cachedResultName": "Food Delivery System",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 676783310,
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Eic0Lfi0DR0NEv7KYYapqx1jcL3a93x-85fZrVF_qhY/edit#gid=676783310"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Customer Name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Customer_Name', ``, 'string') }}",
+            "Phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Phone', ``, 'string') }}",
+            "Item": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Item', ``, 'string') }}",
+            "Quantity": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Quantity', ``, 'string') }}",
+            "Description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+            "Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Status', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Item",
+              "displayName": "Item",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        160,
+        112
+      ],
+      "id": "3b6928bf-3d10-47cc-85cf-9d1d7c8d289e",
+      "name": "save_order",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "RvU4eCFVTcqC6acw",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        128
+      ],
+      "id": "3cb659d2-c6c3-4d95-9b68-f4183759fa1a",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "K0SxzJMfScVYQ5mn",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "WhatsApp Trigger": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "8801580598212",
+            "phone_number_id": "1268058909726031"
+          },
+          "contacts": [
+            {
+              "profile": {
+                "name": "Sheikh Nazmul Islam"
+              },
+              "wa_id": "8801838457404",
+              "user_id": "BD.1124613553417340"
+            }
+          ],
+          "messages": [
+            {
+              "from": "8801838457404",
+              "from_user_id": "BD.1124613553417340",
+              "id": "wamid.HBgNODgwMTgzODQ1NzQwNBUCABIYIEFDRTJCMDFEN0EwRjNFRTU2QzE1RkY5NEQ1MEJCODhBAA==",
+              "timestamp": "1788006774",
+              "text": {
+                "body": "Hi"
+              },
+              "type": "text"
+            }
+          ],
+          "field": "messages"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_stock": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "find_order": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "save_order": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f4edbdb0-9cec-47f3-a25a-e2cba01dc3d1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2827475fd377d952dba1706072dbbb303872e88f960a1205d4ab78062d2a9bba"
+  },
+  "nodeGroups": [],
+  "id": "GG0C7HdX2vx7FWwf",
+  "tags": []
+}
