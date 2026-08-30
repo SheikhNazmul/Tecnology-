@@ -1,180 +1,225 @@
-# WhatsApp AI Automation (Meta Cloud API + n8n)
+# WhatsApp AI Automation — Meta Cloud API + n8n
 
-A proof of concept WhatsApp automation built with the Meta WhatsApp Business Cloud API and n8n. It receives messages through a webhook, processes them with an AI agent, reads and writes order data in Google Sheets, and replies back through the Cloud API.
+A proof-of-concept WhatsApp ordering assistant built with the **Meta WhatsApp Business Cloud API**, **n8n**, **Google Gemini**, and **Google Sheets**.
 
-Built as a technical assessment for the AI Automation Intern role.
+The system receives WhatsApp messages through a webhook, uses an AI Agent to understand the conversation, checks product stock, looks up existing orders, saves new orders, and sends replies back through the WhatsApp Cloud API.
 
-## Demo video
+> Built as a technical assessment for an AI Automation Intern role.
 
-<!-- EDIT: paste your video link below -->
-[video link here]
+## Demo
 
-## What it does
+Add the final demo video link here:
 
-A customer sends a message on WhatsApp. The webhook fires, the workflow filters out non text events, and an AI agent handles the conversation. The agent can check stock, look up an existing order, and save a new order to a Google Sheet. The reply goes back to the same customer through the Cloud API.
+**Video:** `[Add demo video link]`
 
-The demo use case is a restaurant ordering assistant, but the messaging layer is generic.
+## Features
 
-## Stack
+- WhatsApp Cloud API message receiving and sending
+- n8n webhook-based automation
+- Google Gemini-powered AI Agent
+- Conversation memory using the customer's WhatsApp number
+- Stock lookup from Google Sheets
+- Existing-order lookup from Google Sheets
+- New-order creation in Google Sheets
+- Meta WhatsApp message-template workflow
+- Text-message filtering
+- Dynamic sender/recipient handling
+- Documented phone + Cloud API co-existence approach and limitation
 
-- Meta WhatsApp Business Cloud API
-- n8n for the workflow and webhook handling
-- Groq (GPT OSS 120B) as the language model
-- Google Sheets as the data store
+## Architecture
 
-<!-- EDIT: if you go back to Gemini, change the model line above to "Google Gemini as the language model" -->
-
-## Files
-
+```text
+Customer on WhatsApp
+        |
+        v
+Meta WhatsApp Cloud API
+        |
+        v
+n8n WhatsApp Trigger
+        |
+        v
+Text Message Filter
+        |
+        v
+Google Gemini AI Agent
+   |       |       |
+   |       |       +--> save_order -> Google Sheets
+   |       +----------> find_order -> Google Sheets
+   +------------------> check_stock -> Google Sheets
+        |
+        v
+WhatsApp Cloud API
+        |
+        v
+Customer receives reply
 ```
-workflow.json           main workflow (receive, process, reply)
-template-workflow.json  sends an approved Meta message template
+
+## Tech Stack
+
+- **Meta WhatsApp Business Cloud API** — messaging layer
+- **n8n** — workflow automation and webhook handling
+- **Google Gemini** — language model / AI Agent
+- **Google Sheets** — stock and order data store
+
+## Repository Files
+
+```text
+workflow.json
+    Main n8n workflow for receiving, processing and replying to WhatsApp messages.
+
+template-workflow.json
+    Example workflow for sending an approved WhatsApp message template.
+
 README.md
+    Project documentation and implementation notes.
+
+docs/coexistence.md
+    Phone + Cloud API co-existence research and limitation notes.
 ```
+
+## Google Sheets Structure
+
+### `check_stock`
+
+| Product | Quantity | Status |
+|---|---:|---|
+| Chicken Thali | 20 | Available |
+| Veg Thali | 10 | Available |
+
+### `Orders`
+
+| Customer Name | Phone | Item | Quantity | Description | Status |
+|---|---|---|---:|---|---|
+
+### Workflow tools
+
+| Tool | Purpose | Operation |
+|---|---|---|
+| `check_stock` | Check current product stock | Read rows |
+| `find_order` | Find an existing order | **Get Row(s)** |
+| `save_order` | Save a confirmed new order | Append row |
+
+> **Important:** `find_order` must use **Get Row(s)**, not Append. `save_order` is the node that uses Append.
 
 ## Setup
 
-### 1. Meta app
+### 1. Meta WhatsApp Cloud API
 
-1. Create an app at developers.facebook.com and add the WhatsApp product.
-2. Note the Phone Number ID and the WhatsApp Business Account ID from the API Setup page. Both are needed later.
-3. Generate an access token with `whatsapp_business_messaging` and `whatsapp_business_management`.
+1. Create/configure a Meta app with the WhatsApp product.
+2. Get the WhatsApp Business Account ID and Phone Number ID.
+3. Configure an access token with the permissions required by the WhatsApp Cloud API.
+4. Configure the n8n WhatsApp Trigger webhook in the Meta dashboard.
+5. Subscribe the application to WhatsApp message events.
 
-### 2. Webhook
+Do not commit access tokens, app secrets, or other credentials to this repository.
 
-1. In n8n, open the WhatsApp Trigger node and copy the production webhook URL.
-2. In the Meta app dashboard go to WhatsApp then Configuration, and paste that URL as the callback URL.
-3. Set a verify token. The same value must be set in the n8n WhatsApp credential.
-4. Subscribe to the `messages` field.
+### 2. n8n
 
-Meta sends a GET request with a challenge parameter when you save the URL. n8n answers that automatically using the verify token stored in the credential, so no separate handler is needed.
-
-To subscribe an app to a WhatsApp Business Account manually:
-
-```
-POST /v21.0/{WABA_ID}/subscribed_apps
-```
-
-Note that this edge lives on the WABA, not on the Phone Number ID. Using the Phone Number ID here returns error code 100 with subcode 33.
+1. Import `workflow.json` into n8n.
+2. Reconnect your own WhatsApp, Google Sheets, and Google Gemini credentials.
+3. Confirm that the three Google Sheets tools point to the correct spreadsheet.
+4. Confirm that `find_order` is configured for **Get Row(s)**.
+5. Save and activate the workflow.
 
 ### 3. Google Sheets
 
-Create a spreadsheet with two sheets.
+Create the `check_stock` and `Orders` sheets using the column structures shown above, then connect the Google Sheets credential in n8n.
 
-`check_stock`
+## Workflow Logic
 
-| Product | Quantity | Status |
-|---|---|---|
-
-`Orders`
-
-| Customer Name | Phone | Item | Quantity | Description | Status |
-|---|---|---|---|---|---|
-
-Connect a Google Sheets credential in n8n and point the three sheet nodes at this document.
-
-### 4. Import the workflow
-
-1. In n8n create a new workflow and import `workflow.json`.
-2. Select your own credentials in the WhatsApp, model, and Google Sheets nodes. Credentials are not included in the export.
-3. Update the Sender Phone Number if you are not using the dynamic expression.
-4. Save and activate.
-
-## How the workflow is built
-
-```
-WhatsApp Trigger  ->  If  ->  AI Agent  ->  Send Message
-                              |
-                              +-- Chat model
-                              +-- Simple Memory (conversation state)
-                              +-- check_stock  (read)
-                              +-- find_order   (read)
-                              +-- save_order   (append)
+```text
+WhatsApp Trigger
+      |
+      v
+If: message type == text
+      |
+      v
+AI Agent
+  |   |   |
+  |   |   +--> save_order (append)
+  |   +------> find_order (Get Row(s))
+  +----------> check_stock (read)
+      |
+      v
+Send WhatsApp Message
 ```
 
-### Payload handling
+### Message filtering
 
-WhatsApp does not only send user messages to the webhook. It also sends delivery status events for sent, delivered and read. Those payloads have no `messages` array, so passing them straight to the agent throws an error.
-
-The If node filters on:
-
-```
-{{ $json.messages[0].type }}  is equal to  text
-```
-
-Status events and non text messages such as images or voice notes fall to the false branch and stop there. Only text messages reach the agent.
+WhatsApp webhooks can contain message events as well as delivery/read/status events. The workflow checks the message type and only passes text messages to the AI Agent.
 
 ### Conversation memory
 
-Each incoming message starts a separate workflow execution. Nothing about the previous message survives on its own. The memory node is what carries the conversation forward, keyed on the sender number:
+The session key is the customer's WhatsApp number:
 
-```
+```text
 {{ $('WhatsApp Trigger').item.json.messages[0].from }}
 ```
 
-This gives every customer their own session.
+This keeps each customer's conversation context separate.
 
-The current setup uses Simple Memory, which stores state in the n8n instance memory. That is fine for a demo but it does not survive a restart and is not shared across workers in a queue or multi main setup. For production this should be swapped for Postgres or Redis chat memory. The node itself is a drop in replacement, only the credential and connection change.
+The current demo uses n8n Simple Memory. For production, durable shared memory such as PostgreSQL or Redis would be more appropriate.
 
-### Replying
+### Dynamic WhatsApp reply
 
-The sender and recipient are both read from the trigger payload rather than hardcoded:
+The workflow takes the sender and recipient information from the incoming webhook instead of hardcoding a customer number. This makes the workflow reusable for different conversations.
 
-```
-Sender     {{ $('WhatsApp Trigger').item.json.metadata.phone_number_id }}
-Recipient  {{ $('WhatsApp Trigger').item.json.messages[0].from }}
-```
+## WhatsApp Message Templates
 
-So the reply always goes out from whichever number received the message, and back to whoever sent it. Adding a second number needs no change to the workflow.
+WhatsApp Business messaging uses approved message templates when a business needs to initiate or continue a conversation outside the applicable customer-service window.
 
-## Message templates
+`template-workflow.json` is included as a separate example for sending an approved template. The template name and language must match the template configured in WhatsApp Manager.
 
-Free form messages can only be sent inside the 24 hour window that opens when a customer messages you. Outside that window you must use a template approved by Meta.
+## Phone + Cloud API Co-existence
 
-Templates are created in WhatsApp Manager under Message Templates. Utility templates with plain text and no variables get approved fastest. Marketing templates take longer and are rejected more often.
+### What it means
 
-`template-workflow.json` sends one. The template field takes the name and language code joined by a pipe:
+WhatsApp phone + Cloud API co-existence allows a business to keep using the WhatsApp Business App while also connecting the same business number to Cloud API automation, subject to Meta's eligibility and onboarding requirements.
 
-```
-template_name|en
-```
+This is different from the normal Cloud API phone-number registration flow.
 
-The language code must match exactly what was selected when the template was created. `en` and `en_US` are different templates as far as the API is concerned.
+### What happened in this assessment
 
-Two limits worth knowing. The default `hello_world` template can only be sent from Meta provided test numbers, not from a registered business number. And a template with variables will fail unless the body components are supplied in the request.
+The number was initially registered through the standard Cloud API flow. That is not the co-existence onboarding path, so the intended co-existence setup could not be completed within the assessment environment/time window.
 
-## Phone and Cloud API co-existence
+The co-existence onboarding path requires the appropriate Meta Embedded Signup / partner setup and eligibility. Business verification and app/solution review requirements can also apply depending on the onboarding route.
 
-This is the part of the assessment I did not get fully working, so here is an honest account of what happened and what the correct path is.
+Because those Meta-side requirements could not be completed within the 48-hour assessment window, co-existence is documented here rather than claimed as a working feature.
 
-### What co-existence means
+See [`docs/coexistence.md`](docs/coexistence.md) for the detailed explanation and proposed human-handoff logic.
 
-Normally a WhatsApp number lives in one place. Either a person uses it in the WhatsApp Business App on a phone, or an application drives it through the Cloud API. Co-existence lets both happen on the same number at the same time. A human agent can pick up a conversation from the phone while automation handles the rest, and both see the same thread.
+### Human handoff concept
 
-### What went wrong here
+If a human replies from the WhatsApp Business App while automation is active, the workflow should detect the relevant echo/sent event and temporarily suppress automated replies for that conversation. This prevents the human and AI from responding at the same time.
 
-I registered the number through the standard Cloud API flow. That flow migrates the number to the API and logs it out of the WhatsApp Business App. By the time I understood the difference, the number was already registered the normal way.
+This handoff logic was not presented as fully implemented because the co-existence onboarding itself was not completed.
 
-Standard registration and co-existence onboarding are not the same path, and you cannot switch from one to the other after the fact. Co-existence has to be chosen at onboarding.
+## Known Limitations
 
-### The correct approach
+- Phone + Cloud API co-existence was not fully configured in the assessment environment.
+- Simple Memory is not durable across restarts/workers.
+- Webhook signature verification should be added for a production deployment.
+- Idempotency/duplicate-message handling should be added to prevent duplicate order creation when webhook retries occur.
+- The demo currently focuses on text messages.
+- Credentials are intentionally not included in the exported workflow.
 
-Co-existence is set up through Embedded Signup, not through the standard registration screen. The business keeps using the WhatsApp Business App on the phone, and during Embedded Signup a QR code is scanned from inside the app to link the Cloud API alongside it. The number stays active in both places.
+## Security Notes
 
-Two constraints matter once it is set up. If the client re-registers the WhatsApp Business App or moves to a new device, the Cloud API companion is offboarded automatically and has to be reconnected. And Embedded Signup versions are deprecated on a schedule, so the current version should be confirmed in Meta's documentation before building against it.
+Never commit the following to GitHub:
 
-### Handling the handoff
+- Meta access tokens
+- Meta app secrets
+- n8n credentials
+- Google OAuth credentials
+- Google service-account private keys
+- `.env` files containing secrets
 
-Co-existence creates a problem the automation has to solve. If a human replies from the phone while the bot is also replying, the customer gets two answers to the same question.
+Use environment variables or the credential manager provided by n8n instead.
 
-Messages sent from the phone arrive at the webhook as echo events rather than incoming messages. The workflow can subscribe to those, and when one arrives for a conversation, set a flag against that session and suppress bot replies for a cooling off period. The bot resumes once the human has stopped replying. This keeps the two from talking over each other without needing a separate agent console.
+## Assessment Summary
 
-I did not implement this because the co-existence setup itself did not complete, but it is the piece that would sit on top of it.
+This project demonstrates a complete working automation path for:
 
-## Known limitations
+**WhatsApp → Webhook → AI Agent → Google Sheets tools → WhatsApp reply**
 
-- Co-existence is not configured, for the reasons above.
-- Simple Memory is not durable. Postgres or Redis is needed for production.
-- No signature verification on the webhook. n8n handles the verify token challenge, but the `X-Hub-Signature-256` header on incoming payloads is not checked against the app secret. A production deployment should verify it before trusting the payload.
-- No duplicate handling. Meta retries a webhook if it does not get a timely response, which can save the same order twice. Storing the message id and checking it before processing would prevent this.
-- Only text messages are handled. Images, voice notes and interactive replies are filtered out rather than processed.
+The phone + Cloud API co-existence limitation is explicitly documented rather than presented as completed functionality.
