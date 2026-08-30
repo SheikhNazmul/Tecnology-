@@ -1,0 +1,68 @@
+{
+  "name": "Send Template",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        -368
+      ],
+      "id": "6275e310-3a58-4b9b-a33b-f0c95be1765b",
+      "name": "When clicking \u2018Execute workflow\u2019"
+    },
+    {
+      "parameters": {
+        "phoneNumberId": "=1268058909726031",
+        "recipientPhoneNumber": "=8801838457404",
+        "template": "=order_status_update|en",
+        "components": {
+          "component": []
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        -368
+      ],
+      "id": "9b54db00-ad40-4690-9d0d-408ca222a1f8",
+      "name": "Send template",
+      "webhookId": "7992ae17-89a7-4285-9f96-34a07b733176",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "ystDEaRS1xteDZyP",
+          "name": "WhatsApp account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "Send template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9d6b76ee-2fc7-43b3-b339-79848952c278",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2827475fd377d952dba1706072dbbb303872e88f960a1205d4ab78062d2a9bba"
+  },
+  "nodeGroups": [],
+  "id": "lh6yd2fOcsQIA6hz",
+  "tags": []
+}
