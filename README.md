@@ -1,4 +1,4 @@
-# WhatsApp AI Automation — Meta Cloud API + n8n
+# WhatsApp AI Automation — Human Hands off + Ai Agent + n8n
 
 A proof-of-concept WhatsApp ordering assistant built with the **Meta WhatsApp Business Cloud API**, **n8n**, **Google Gemini**, and **Google Sheets**.
 
