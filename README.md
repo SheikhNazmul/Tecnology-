@@ -8,9 +8,7 @@ The system receives WhatsApp messages through a webhook, uses an AI Agent to und
 
 ## Demo
 
-Add the final demo video link here:
-
-**Video:** `(https://drive.google.com/file/d/1HFsx8P3xSWKu9URH--vdEvoJ53u1h8ZU/view?usp=sharing)`
+**Video:** https://drive.google.com/file/d/1HFsx8P3xSWKu9URH--vdEvoJ53u1h8ZU/view?usp=sharing
 
 ## Features
 
